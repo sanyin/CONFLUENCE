@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>汇流 · CONFLUENCE — 让不同的智能，在同一条河流上思考</title>
+    <meta name="description" content="一个轻量的多智能体协作世界：让不同模型聚集、互相交流、共同完成任务，并且看得见。" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2307090b'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23F5B461' stroke-width='1.5'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23F5B461'/%3E%3Cg stroke='%236FD3E8' stroke-width='1.5'%3E%3Cline x1='32' y1='12' x2='32' y2='2'/%3E%3Cline x1='32' y1='62' x2='32' y2='52'/%3E%3Cline x1='12' y1='32' x2='2' y2='32'/%3E%3Cline x1='62' y1='32' x2='52' y2='32'/%3E%3C/g%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="noise" aria-hidden="true"></div>
+
+    <div class="app" id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </span>
+          <span class="brand-word">CONFLUENCE</span>
+          <span class="brand-cn">汇流</span>
+        </div>
+        <div class="topbar-meta">
+          <span class="pill" id="statusPill"><b class="dot"></b><span id="statusText">待命</span></span>
+          <span class="tl-sep"></span>
+          <span class="micro">回合 <b class="tnum" id="turnText">00</b></span>
+          <span class="micro">连接 <b class="tnum" id="clientText">0</b></span>
+          <span class="micro" id="usageText">tokens 0</span>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn ghost only-mobile" id="btnToggleRail">成员</button>
+          <button class="btn ghost only-narrow" id="btnTogglePanels">直播</button>
+          <button class="btn ghost" data-act="providers">模型与世界</button>
+          <button class="btn ghost" id="btnExport">导出实录</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="rail rail-left">
+          <div class="rail-scroll">
+            <div class="world-head">
+              <span class="micro">MISSION</span>
+              <h2 id="worldTitle">尚未创建世界</h2>
+              <p class="goal" id="worldGoal"></p>
+            </div>
+
+            <div class="progress-wrap">
+              <div class="progress"><i id="progressBar"></i></div>
+              <div class="progress-meta">
+                <span id="statusSub">等待任务</span>
+                <span class="mono" id="progressText">0 / 24</span>
+              </div>
+            </div>
+
+            <div class="controls">
+              <button class="btn primary" id="btnRun">开始</button>
+              <button class="btn" id="btnPause" disabled>暂停</button>
+              <button class="btn danger" id="btnStop" disabled>结束</button>
+            </div>
+
+            <div class="section-title">
+              <span>议会成员</span>
+              <button class="mini" id="btnAddAgent">+ 添加</button>
+            </div>
+            <div class="roster" id="roster"></div>
+
+            <div class="side-note" id="awaitingNote" hidden>
+              <b>等待外部成员</b>
+              <span id="awaitingText"></span>
+            </div>
+          </div>
+
+          <div class="rail-foot">
+            <div class="micro">模型通道</div>
+            <div class="model-line" id="modelLine">—</div>
+            <button class="link" id="btnReset">重置这个世界</button>
+          </div>
+        </aside>
+
+        <section class="stage" id="stage">
+          <div class="stage-grid" aria-hidden="true"></div>
+          <div class="stage-glow" aria-hidden="true"></div>
+
+          <div class="viewport" id="viewport">
+            <svg class="edges" id="edges" viewBox="-1000 -1000 2000 2000" aria-hidden="true">
+              <defs>
+                <filter id="softGlow" x="-200%" y="-200%" width="400%" height="400%">
+                  <feGaussianBlur stdDeviation="3.2" result="b" />
+                  <feMerge>
+                    <feMergeNode in="b" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <g id="edgeLayer"></g>
+              <g id="packetLayer"></g>
+            </svg>
+
+            <div class="core" id="core">
+              <div class="core-rings" aria-hidden="true">
+                <span class="ring r1"></span>
+                <span class="ring r2"></span>
+                <span class="ring r3"></span>
+                <span class="sweep"></span>
+              </div>
+              <div class="core-body">
+                <span class="micro">WORLD SIGNAL</span>
+                <div class="core-goal" id="coreGoal">等待目标</div>
+                <div class="core-wave" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <div class="core-status mono" id="coreStatus">IDLE</div>
+              </div>
+            </div>
+
+            <div class="nodes" id="nodes"></div>
+          </div>
+
+          <div class="stage-hud">
+            <div class="hud-hint">
+              <span class="micro">拖拽平移 · 滚轮缩放 · 卡片可拖动</span>
+            </div>
+            <div class="hud-zoom">
+              <button class="mini" data-zoom="out" title="缩小">−</button>
+              <button class="mini" data-zoom="reset" title="复位">◎</button>
+              <button class="mini" data-zoom="in" title="放大">+</button>
+            </div>
+          </div>
+
+          <div class="toast" id="toast" hidden></div>
+        </section>
+
+        <aside class="rail rail-right">
+          <div class="tabs">
+            <button class="tab is-active" data-tab="live">直播 <b id="liveCount">0</b></button>
+            <button class="tab" data-tab="tasks">任务 <b id="taskCount">0</b></button>
+            <button class="tab" data-tab="memory">记忆</button>
+            <button class="tab" data-tab="log">日志</button>
+          </div>
+          <div class="tab-body">
+            <div class="panel is-active" id="panelLive"><div class="feed" id="feed"></div></div>
+            <div class="panel" id="panelTasks"><div class="task-list" id="taskList"></div></div>
+            <div class="panel" id="panelMemory"><div class="memory-list" id="memoryList"></div></div>
+            <div class="panel" id="panelLog"><div class="log-list" id="logList"></div></div>
+          </div>
+          <div class="rail-foot right-foot">
+            <span class="micro" id="feedHint">实时信号流</span>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="composer">
+        <div class="composer-inner">
+          <span class="composer-tag">人类</span>
+          <input
+            id="sayInput"
+            autocomplete="off"
+            placeholder="向世界广播，或 @某个智能体 单独投递（Enter 发送）"
+          />
+          <span class="target-chip" id="composerTarget" hidden></span>
+          <button class="btn primary" id="btnSend">发送</button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ─────────────────────────── 创世界面 ─────────────────────────── -->
+    <div class="genesis" id="genesis">
+      <div class="genesis-grid" aria-hidden="true"></div>
+      <div class="genesis-inner">
+        <div class="genesis-copy">
+          <div class="micro light">A COMMONS FOR MANY MINDS</div>
+          <h1>
+            让不同的智能<br />
+            <em>在同一条河流上思考</em>
+          </h1>
+          <p class="lead">
+            把任务交给一群可以互相交流的 AI：各有角色、共享任务板与长期记忆。<br />
+            你看得见每一次发言、每一次交接，也随时可以插话、喊停、点名。
+          </p>
+          <div class="facts">
+            <div><b>零依赖</b><span>单进程启动</span></div>
+            <div><b>任意模型</b><span>OpenAI 兼容即可</span></div>
+            <div><b>可介入</b><span>人类始终在场</span></div>
+          </div>
+        </div>
+
+        <div class="genesis-card">
+          <label class="micro" for="goalInput">任务目标 · GOAL</label>
+          <textarea
+            id="goalInput"
+            rows="5"
+            placeholder="例如：为一款面向独立开发者的记账 App 设计技术方案，并给出 4 周落地计划。"
+          ></textarea>
+          <div class="presets" id="presets"></div>
+
+          <div class="field-head">
+            <span class="micro">议会阵容 · COUNCIL</span>
+            <div class="count-ctl">
+              <button type="button" class="mini" id="btnMemberMinus" aria-label="减少成员">−</button>
+              <b class="tnum" id="memberCount">5</b>
+              <button type="button" class="mini" id="btnMemberPlus" aria-label="增加成员">+</button>
+            </div>
+          </div>
+          <div class="roster-pick" id="rosterPick"></div>
+          <div class="member-preview" id="memberPreview"></div>
+
+          <div class="grid2">
+            <div>
+              <label class="micro" for="modelMode">模型分配</label>
+              <select id="modelMode">
+                <option value="auto">自动分配 · 每个成员不同</option>
+                <option value="shared">统一模型 · 全部相同</option>
+              </select>
+            </div>
+            <div id="sharedProviderCell">
+              <label class="micro" for="providerSelect">模型通道</label>
+              <select id="providerSelect"></select>
+            </div>
+          </div>
+          <div class="field" id="sharedModelRow">
+            <label class="micro" for="modelInput">模型</label>
+            <input id="modelInput" list="modelList" placeholder="deepseek-chat" />
+            <datalist id="modelList"></datalist>
+          </div>
+          <div class="hint" id="keyHint"></div>
+
+          <button class="btn primary big" id="btnCreate">点亮议会 →</button>
+          <div class="genesis-foot">
+            无需密钥即可用「离线模拟器」跑通全流程 · 所有数据只留在本机
+          </div>
+        </div>
+      </div>
+      <div class="genesis-foot-bar">
+        <span class="micro">LOCAL-FIRST · ZERO-DEPENDENCY · OPENAI-COMPATIBLE</span>
+        <span class="micro">CONFLUENCE v1.0</span>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────── 成员编辑 ─────────────────────────── -->
+    <dialog class="modal" id="agentDialog">
+      <form method="dialog" class="modal-card" id="agentForm">
+        <header class="modal-head">
+          <div>
+            <span class="micro">MEMBER</span>
+            <h3 id="agentDialogTitle">添加成员</h3>
+          </div>
+          <button class="icon-btn" type="button" data-close="agentDialog">✕</button>
+        </header>
+        <div class="modal-body">
+          <div class="grid2">
+            <label class="field">
+              <span class="micro">名字</span>
+              <input name="name" required maxlength="20" placeholder="Nova" />
+            </label>
+            <label class="field">
+              <span class="micro">角色</span>
+              <input name="role" maxlength="16" placeholder="探索者" />
+            </label>
+          </div>
+          <div class="grid3">
+            <label class="field">
+              <span class="micro">符号</span>
+              <input name="glyph" maxlength="4" placeholder="✧" />
+            </label>
+            <label class="field">
+              <span class="micro">颜色</span>
+              <input name="color" type="color" value="#6FD3E8" />
+            </label>
+            <label class="field">
+              <span class="micro">性格模板</span>
+              <select name="personaKey" id="personaSelect"></select>
+            </label>
+          </div>
+          <div class="grid2">
+            <label class="field">
+              <span class="micro">模型通道</span>
+              <select name="providerId" id="agentProvider"></select>
+            </label>
+            <label class="field">
+              <span class="micro">模型</span>
+              <input name="model" list="modelList" placeholder="deepseek-chat" />
+            </label>
+          </div>
+          <label class="field">
+            <span class="micro">行为方式</span>
+            <select name="kind">
+              <option value="llm">由模型驱动（自动发言）</option>
+              <option value="external">外部程序接入（等你投递文本）</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="micro">额外人设（可选，会追加到系统提示）</span>
+            <textarea name="system" rows="3" placeholder="例如：你说话极其简短，永远先给结论。"></textarea>
+          </label>
+          <label class="check"><input type="checkbox" name="isConductor" /> 设为指挥家（负责调度，不参与发言）</label>
+          <p class="hint" id="agentHint"></p>
+        </div>
+        <footer class="modal-foot">
+          <button class="btn ghost" value="cancel" type="submit">取消</button>
+          <button class="btn primary" value="save" type="submit" id="agentSave">保存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <!-- ─────────────────────────── 模型与世界 ─────────────────────────── -->
+    <dialog class="modal modal-wide" id="providerDialog">
+      <div class="modal-card">
+        <header class="modal-head">
+          <div>
+            <span class="micro">MODELS &amp; WORLD</span>
+            <h3>模型通道与世界参数</h3>
+          </div>
+          <button class="icon-btn" data-close="providerDialog">✕</button>
+        </header>
+        <div class="modal-body">
+          <div class="provider-list" id="providerList"></div>
+
+          <div class="divider"><span>添加自定义端点</span></div>
+          <form id="providerForm" class="provider-form">
+            <div class="grid3">
+              <label class="field">
+                <span class="micro">名称</span>
+                <input name="name" placeholder="我的网关" required />
+              </label>
+              <label class="field span2">
+                <span class="micro">Base URL（到 /v1）</span>
+                <input name="baseUrl" placeholder="https://api.example.com/v1" required />
+              </label>
+            </div>
+            <div class="grid2">
+              <label class="field">
+                <span class="micro">API Key（可留空，用于本地服务）</span>
+                <input name="apiKey" type="password" placeholder="sk-..." />
+              </label>
+              <label class="field">
+                <span class="micro">模型列表（逗号分隔）</span>
+                <input name="models" placeholder="model-a, model-b" />
+              </label>
+            </div>
+            <button class="btn" type="submit">保存端点</button>
+          </form>
+
+          <div class="divider"><span>世界参数</span></div>
+          <div class="grid3">
+            <label class="field">
+              <span class="micro">最大回合</span>
+              <input id="cfgMaxTurns" type="number" min="4" max="200" step="1" />
+            </label>
+            <label class="field">
+              <span class="micro">回合间隔 (ms)</span>
+              <input id="cfgDelay" type="number" min="0" max="10000" step="100" />
+            </label>
+            <label class="field">
+              <span class="micro">调度方式</span>
+              <select id="cfgModerator">
+                <option value="llm">指挥家智能调度</option>
+                <option value="rules">规则轮转（省 token）</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn" id="btnSaveConfig">应用参数</button>
+          <p class="hint">
+            密钥只保存在本机 <code>data/providers.json</code>，不会回传到前端；内置通道优先读取环境变量。
+          </p>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "confluence",
+  "version": "1.0.0",
+  "private": true,
+  "description": "汇流 · Confluence — 让不同的 AI 聚集、互相交流、协作完成任务的轻量可视化桥梁",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node server/index.mjs --open",
+    "test": "node scripts/smoke.mjs && node scripts/integration.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "mcp": "node scripts/mcp-bridge.mjs",
+    "say": "node scripts/say.mjs"
+  },
+  "keywords": [
+    "multi-agent",
+    "ai",
+    "collaboration",
+    "visualization",
+    "openai-compatible",
+    "canvas"
+  ],
+  "license": "MIT"
+}
